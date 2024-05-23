@@ -24,6 +24,7 @@ estimate_int <- function(
     maxScoreStopCriterion = 0.001,
     # additional return objects
     returnEventProbabilities = FALSE,
+    onlyScore = FALSE,
     # additional parameter for DyNAM-MM
     allowReflexive = FALSE,
     isTwoMode = FALSE,
@@ -362,6 +363,14 @@ estimate_int <- function(
     # Calculate the UPDATE distance taking into account the DAMPING
     dampingFactor <- minDampingFactor
 
+    if (onlyScore) {
+      return(list(
+        logLikelihood = logLikelihood,
+        finalScore = score,
+        finalInformationMatrix = informationMatrix,
+        nEvents = nEvents
+      ))
+    }
     # INVERT information matrix
     # We only invert the unfixed part of the parameter.
     # The fixed components of the score have already be set to be 0.

@@ -333,7 +333,8 @@ estimate.formula <- function(
         "maxIterations", "maxScoreStopCriterion", "initialDamping",
         "dampingIncreaseFactor", "dampingDecreaseFactor", "initialParameters",
         "fixedParameters", "returnEventProbabilities", "returnIntervalLogL",
-        "impute", "engine", "startTime", "endTime", "opportunitiesList"
+        "impute", "engine", "startTime", "endTime", "opportunitiesList",
+        "onlyScore"
       )
 
 
