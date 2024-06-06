@@ -309,6 +309,15 @@ estimate_int <- function(
       break
     }
 
+    if (onlyScore) {
+      return(list(
+        logLikelihood = logLikelihood,
+        finalScore = score,
+        finalInformationMatrix = informationMatrix,
+        nEvents = nEvents
+      ))
+    }
+
     # we don't consider the fixed components of the score.
     # It's for the fixing parameter feature. \
     score[idFixedCompnents] <- 0
@@ -363,14 +372,7 @@ estimate_int <- function(
     # Calculate the UPDATE distance taking into account the DAMPING
     dampingFactor <- minDampingFactor
 
-    if (onlyScore) {
-      return(list(
-        logLikelihood = logLikelihood,
-        finalScore = score,
-        finalInformationMatrix = informationMatrix,
-        nEvents = nEvents
-      ))
-    }
+
     # INVERT information matrix
     # We only invert the unfixed part of the parameter.
     # The fixed components of the score have already be set to be 0.
