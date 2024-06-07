@@ -314,19 +314,19 @@ estimate_int <- function(
     # It's for the fixing parameter feature. \
     score[idFixedCompnents] <- 0
 
-    if (onlyScore){
-      inverseInformationUnfixed <- matrix(0, nParams, nParams)
-      isConverged <- TRUE
-      break
-    }
-    # if (onlyScore) {
-    #   return(list(
-    #     logLikelihood = logLikelihood,
-    #     finalScore = score,
-    #     finalInformationMatrix = informationMatrix,
-    #     nEvents = nEvents
-    #   ))
+    # if (onlyScore){
+    #   inverseInformationUnfixed <- matrix(0, nParams, nParams)
+    #   isConverged <- TRUE
+    #   break
     # }
+    if (onlyScore) {
+      return(list(
+        logLikelihood = logLikelihood,
+        finalScore = score,
+        finalInformationMatrix = informationMatrix,
+        nEvents = nEvents
+      ))
+    }
 
     if (!verbose && progress) {
       cat(
