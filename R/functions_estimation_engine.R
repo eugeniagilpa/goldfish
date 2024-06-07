@@ -315,6 +315,7 @@ estimate_int <- function(
     score[idFixedCompnents] <- 0
 
     if (onlyScore){
+      inverseInformationUnfixed <- matrix(0, nParams, nParams)
       isConverged <- TRUE
       break
     }
