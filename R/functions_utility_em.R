@@ -112,3 +112,54 @@ get_weights <- function(proposal, loglik, f = function(x) x ,...){
 }
 
 
+
+
+
+stratified_resample <- function(cum_weights) {
+  N <- length(cum_weights)
+  u <- (runif(N) + 0:(N-1)) / N # Stratified uniform samples
+  indices <- findInterval(u, cum_weights) + 1
+  return(indices)
+}
+
+residual_resample <- function(weights) {
+  N <- length(weights)
+  weights <- weights / sum(weights)  # Ensure weights are normalized
+  
+  # Step 1: Deterministic part
+  num_copies <- floor(N * weights)
+  residual <- weights * N - num_copies
+  indices <- rep(1:N, num_copies)
+  
+  # Step 2: Stochastic part
+  R <- N - length(indices)  # Number of remaining particles to sample
+  if (R > 0) {
+    residual <- residual / sum(residual)  # Normalize residuals
+    cumulative <- cumsum(residual)
+    u <- runif(R)
+    extra_indices <- findInterval(u, cumulative) + 1
+    indices <- c(indices, extra_indices)
+  }
+  
+  return(indices)
+}
+
+
+labelTorow <- function(vec,net1){
+  # vec: vector with labels that we want to transform to row/col number
+  newVec = sapply(1:length(vec), function(i) which(as.integer(colnames(net1)) == vec[i]) )
+  return(newVec)
+}
+
+getChoiceProb <- function(row, creationChoice, deletionChoice) {
+  if (row[3] == 0) {
+    return(deletionChoice[row[1], row[2]])
+  } else {
+    return(creationChoice[row[1], row[2]])
+  }
+}
+
+getWaitingTime <- function(r, lambda){
+  - log(1-r) / lambda 
+}
+
