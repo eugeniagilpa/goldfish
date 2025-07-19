@@ -186,3 +186,5 @@ computeSupportConstrain <- function(eventsTot, net1, label){
   return(list("creation" = supportConstrainCrea, "deletion" = supportConstrainDel))
   
 }
+
+#####
