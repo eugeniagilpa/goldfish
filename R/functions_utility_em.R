@@ -163,3 +163,26 @@ getWaitingTime <- function(r, lambda){
   - log(1-r) / lambda 
 }
 
+computeSupportConstrain <- function(eventsTot, net1, label){
+  
+  supportConstrain <- vector(mode = "list", length = nrow(eventsTot))
+  auxNet <- net1
+  
+  for(i in 1:nrow(eventsTot)){
+    sender <- eventsTot$sender[i]
+    receiver <- eventsTot$receiver[i]
+    
+    if(eventsTot$replace[i] == 1){
+      isAvailableChoice <- which(auxNet[labelTorow(sender,net1),]==0 & label != sender)
+    }else{
+      isAvailableChoice <- which(auxNet[labelTorow(sender,net1),]==1)
+    }
+    supportConstrain[[i]] <- isAvailableChoice
+    auxNet[labelTorow(sender,net1),labelTorow(receiver,net1)] <- eventsTot$replace[i]
+  }
+  supportConstrainCrea <- supportConstrain[eventsTot$replace == 1]
+  supportConstrainDel <- supportConstrain[eventsTot$replace == 0]
+  
+  return(list("creation" = supportConstrainCrea, "deletion" = supportConstrainDel))
+  
+}
