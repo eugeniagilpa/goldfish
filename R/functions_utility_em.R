@@ -8,6 +8,9 @@
 ##################### ###
 
 
+## Random utility functioins #-----
+
+
 #' unfixed_params
 #'
 #' @param params list
@@ -186,6 +189,10 @@ labelTorow <- function(vec,net){
 }
 
 
+
+
+## Probability-related utility functions #----
+
 #' getChoiceProb
 #' 
 #' Utility function to get the choice probability for a given an event
@@ -224,7 +231,7 @@ getWaitingTime <- function(r, lambda){
 
 
 
-#' getWaitingTime
+#' computeSupportConstrain
 #' 
 #' Utility function to get the supportConstrain (opportunityList) for a sequence of events
 #' TODO: restructure to be more generic and not crea-del focused
@@ -259,5 +266,384 @@ computeSupportConstrain <- function(eventsTot, net1, label){
   return(list("creation" = supportConstrainCrea, "deletion" = supportConstrainDel))
   
 }
+
+
+#' make_environment_from_list
+#' 
+#' Former loadDataFast
+#'
+#' @param panel_events events from the imputation in the panel data (data.frame)
+#' @param rem_events data.frame relational events
+#' @param panel_data logical, if TRUE, the panel data goldfish object is created, else only actors in the environment
+#' @param rem_data logical, if TRUE, the fb.net goldfish object is created, else, only actors in the environment
+#' @param net matrix initial panel network
+#' @param time1 start time
+#' @param time2 end time
+#' @param actors data.frame actors, must have column present
+#' @param presentUpdate data.frame with updates of the presence of actors panel_data
+#' 
+#' @return goldfish make_data object with panel and rem data for estimation
+#' @noRd
+#'
+make_environment_from_list <- function(panel_events= NULL, 
+                                       rem_events = NULL,
+                                       panel_data = TRUE,
+                                       rem_data = TRUE,
+                                       net = NULL,
+                                       time1 = NULL,
+                                       time2 = NULL,
+                                       actors = NULL,
+                                       presentUpdate = NULL
+                                       ){
+  if(panel_data){
+    if(!is.character(panel_events$sender)) panel_events$sender=as.character(panel_events$sender)
+    if(!is.character(panel_events$receiver)) panel_events$sender=as.character(panel_events$receiver)
+  }
+  
+    datObj <- getData(actors = actors,
+                      presentUpdate = presentUpdate,
+                      panel_events = panel_events, 
+                      rem_events = rem_events,
+                      net = net, 
+                      time1 = time1, 
+                      time2 = time2, 
+                      panel_data = panel_data,
+                      rem_data = rem_data
+                      )
+
+  return(datObj)
+}
+
+
+
+#' getData
+#' 
+#' @param panel_events events from the imputation in the panel data (data.frame)
+#' @param rem_events data.frame relational events
+#' @param panel_data logical, if TRUE, the panel data goldfish object is created, else only actors in the environment
+#' @param rem_data logical, if TRUE, the fb.net goldfish object is created, else, only actors in the environment
+#' @param net matrix initial panel network
+#' @param time1 start time
+#' @param time2 end time
+#' @param actors data.frame actors, must have column present
+#' @param presentUpdate data.frame with updates of the presence of actors rem_data
+#'  
+#' @return goldfish make_data object with panel and rem data for estimation, events from sequence "i"
+#' @noRd
+#'
+getData <- function(panel_events = NULL, 
+                    rem_events = NULL,
+                    panel_data = TRUE,
+                    rem_data = TRUE,
+                    panel_net = NULL, 
+                    time1 = NULL, 
+                    time2 = NULL, 
+                    actors = NULL,
+                    presentUpdate = NULL){
+
+  actors <- make_nodes(actors)
+  actors_rem <- make_nodes(actors[, c("label", "present")])
+  actors_rem$present <- F
+  if(!is.null(presentUpdate)) actors_rem <- link_events(actors_rem, presentUpdate, attribute = "present")
+  actors$present <- T
+  
+  if(panel_data){
+    panel_net <- make_network(net, nodes = actors, directed = T)
+    panel_net <- link_events(panel_net, change_events = panel_events, nodes = actors)
+    panel_dependent <- make_dependent_events(events = panel_events,
+                                             nodes = actors,
+                                             default_network = panel_net)
+  }
+  if(rem_data){
+    rem_events <- rem_events[rem_events$time <= time2, ]
+    rem_net <- make_network(nodes = actors_rem, directed = T)
+    rem_net <- link_events(rem_net, change_events = rem_events, nodes = actors_rem)
+    rem_dependent <- make_dependent_events(events = rem_events,
+                                           nodes = actors_rem,
+                                           default_network = rem_net)
+    rem_dependent <- rem_dependent[rem_dependent$time > time1, ]
+  }
+  
+  if(panel_data){
+    if(rem_data){
+      data_dynam <- make_data(
+        actors = actors,
+        actors_rem = actors_rem,
+        presentUpdate = presentUpdate,
+        panel_net = panel_net,
+        panel_dependent = panel_dependent,
+        panel_events = panel_events,
+        rem_net = rem_net,
+        rem_dependent = rem_dependent,
+        rem_events = rem_events
+      )
+    }else{
+      data_dynam <- make_data(
+        actors = actors,
+        actors_rem = actors_rem,
+        presentUpdate = presentUpdate,
+        panel_net = panel_net,
+        panel_dependent = panel_dependent,
+        panel_events = panel_events
+        )
+    }
+  }else{
+    if(rem_data){
+      data_dynam <- make_data(
+        actors = actors,
+        actors_rem = actors_rem,
+        presentUpdate = presentUpdate,
+        rem_net = rem_net,
+        rem_dependent = rem_dependent,
+        rem_events = rem_events
+      )
+    }else{
+      data_dynam <- make_data(
+        actors = actors,
+        actors_rem = actors_rem,
+        presentUpdate = presentUpdate
+      )
+    }
+  }
+  return(data_dynam)
+}
+
+
+
+
+#' getDyNAMRates
+#' 
+#' @param rate_formula formula rate model
+#' @param rate_params vector of parameters for the rate model
+#' @param net.u network
+#' @param events.u data.frame sequence of events
+#' @param actors.u actors
+#' @param rem_environment environment relational events
+#' @param time1 start time
+#' @param time2 end time
+#'  
+#' @return node poisson rates
+#' @noRd
+#'
+getDyNAMRates <- function(rate_formula,
+                          rate_params,
+                          net.u, 
+                          events.u = NULL,
+                          actors.u, 
+                          rem_environment = NULL,
+                          time1 = 0, 
+                          time2 = 1
+                          ){
+
+  
+  if(nrow(events.u)==0 || is.null(events.u)){
+    events.u <- data.frame(time = (time1 + (time2-time1)/2), 
+                           sender = actors.u$label[1], 
+                           receiver = actors.u$label[2], 
+                           replace = Inf)
+  }
+  
+  
+  panel_net <- make_network(net.u, nodes = actors.u, directed = T)
+  panel_net <- link_events(panel_net, change_events = events.u, nodes = actors.u)
+  
+  
+  dep_events <- make_dependent_events(
+    events.u,
+    nodes = actors.u, default_network = panel_net)
+  rate_formula[[2]] <- as.name("dep_events")
+  
+  
+  data <- make_data(
+    actors.u = actors.u,
+    friend.net = panel_net,
+    depEvents = dep_events
+  )
+  
+  if(!is.null(rem_environment)){
+    for (name in ls(envir = rem_environment, all.names = TRUE)) {
+      assign(name, get(name, envir = rem_environment), envir = data)
+    }
+  }
+  
+  
+  rate_stats <- estimate_dynam(
+    rate_formula,
+    sub_model = "rate",
+    data = data,
+    preprocessing_only = TRUE,
+    verbose = F,
+    progress = F
+  )
+  
+  node_stats <- apply(rate_stats$initialStats, 3, function(x) apply(x, 1, max)) # transform matrices to vectors
+  
+  # calculate node poisson rates
+  node_rates <- as.vector( exp(rate_params[1] +
+                                rowSums(t(t(node_stats) * rate_params[-1]))
+  ) 
+  )
+  
+  return(node_rates)
+}
+
+
+
+
+
+
+#' getDyNAMChoices
+#' 
+#' @param rate_formula formula rate model
+#' @param rate_params vector of parameters for the rate model
+#' @param net.u network
+#' @param events.u data.frame sequence of events
+#' @param actors.u actors
+#' @param rem_environment environment relational events
+#' @param time1 start time
+#' @param time2 end time
+#' @param support.constrain.u list of support constraints for the events
+#'  
+#' @return node poisson rates
+#' @noRd
+#'
+getDyNAMChoices <- function(choice_formula,
+                            choice_params, 
+                            net.u, 
+                            events.u = NULL, 
+                            actors.u,
+                            rem_environment = NULL,
+                            time1 = 0, 
+                            time2 = 1,
+                            support.constrain.u = NULL
+                            ){ 
+  
+  if(nrow(events.u)==0 || is.null(events.u)){
+    events.u <- data.frame(time = (time1 + (time2-time1)/2), 
+                           sender = actors.u$label[1], 
+                           receiver = actors.u$label[2], 
+                           replace = Inf)
+  }
+  
+  
+  panel_net <- make_network(net.u, nodes = actors.u, directed = T)
+  panel_net <- link_events(panel_net, change_events = events.u, nodes = actors.u)
+  
+  
+  dep_events <- make_dependent_events(
+    events.u,
+    nodes = actors.u, 
+    default_network = panel_net)
+  choice_formula[[2]] <- as.name("dep_events")
+  
+  
+  data <- make_data(
+    actors.u = actors.u,
+    panel_net = panel_net,
+    dep_events = dep_events
+  )
+  
+  if(!is.null(rem_environment)){
+    for (name in ls(envir = rem_environment, all.names = TRUE)) {
+      assign(name, get(name, envir = rem_environment), envir = data)
+    }
+  }
+  
+  
+  choice_stats <- estimate_dynam(choice_formula,
+                                sub_model = "choice",
+                                data = data,
+                                preprocessing_only = TRUE,
+                                verbose = F,
+                                progress = F
+  )
+  
+  nEffects <- dim(choice_stats$initialStats)[3]
+  weightedStats <- array(0, dim = c(nrow(actors.u), nrow(actors.u), nEffects))
+  for (i in 1:nEffects){
+    weightedStats[,,i] <- choice_stats$initialStats[,,i] * choice_params[i]
+  }
+  objFun <- exp( apply(weightedStats, 1:2, sum) )
+  diag(objFun) <- 0
+  choiceProbabilities <- objFun * ( rowSums(objFun)^(-1) )
+  
+  tieChoices <- choiceProbabilities
+  
+  return(tieChoices)
+}
+
+
+
+
+
+#' mleMC
+#' 
+#' @param indexCore
+#' @param splitIndicesPerCore
+#' @param formulas list of formulas
+#' @param subModelTypes list of sub-model types 
+#' @param statistics list of preprocessed goldfish objects
+#' @param supportConstrain list of support constraints for each formula
+#' @param time1 start time
+#' @param time2 end time
+#' @param sampleIndexUnique vector of resampled sequences
+#' @param mleNeeded vector of indices to compute MLE
+#' @param data list of goldfish environments
+#' @param fixed_parameters list of fixed parameters for the estimation
+#'  
+#' @return node poisson rates
+#' @noRd
+#'
+mleMC  <- function(indexCore, 
+                   splitIndicesPerCore, 
+                   formulas = formulas,
+                   subModelTypes = subModelTypes, 
+                   statistics = statistics,
+                   supportConstrain = supportConstrain,
+                   time1 = time1,
+                   time2 = time2,
+                   sampleIndexUnique = sampleIndexUnique,
+                   mleNeeded = mleNeeded,
+                   data = environmentsChains,
+                   fixed_parameters = NULL
+                   ){ 
+
+  indicesCore <- splitIndicesPerCore[[indexCore]]
+  resMLE <- vector("list", length(indicesCore))
+  for (aux_sampleID in seq_along(indicesCore)) {
+    sampleID <- indicesCore[aux_sampleID]
+    id <- sampleIndexUnique[mleNeeded[sampleID]]
+    
+    res <- Map(
+      function(formula, sub_model, preproc_init, op_list, fix) {
+        estimate_dynam(
+          x = formula,
+          sub_model = sub_model,
+          preprocessing_init = preproc_init,
+          data = environmentsChains[[id]],
+          control_estimation = set_estimation_opt(engine = "default",
+                                                  fixed_parameters = fix),
+          control_preprocessing = set_preprocessing_opt(
+            start_time = time1,
+            end_time = time2,
+            opportunities_list = op_list
+          ),
+          verbose = FALSE,
+          progress = FALSE
+        )
+      },
+      formulas,
+      subModelTypes,
+      statistics[[id]],
+      supportConstrain[[id]],
+      fixedParameters
+    )
+
+    resMLE[[aux_sampleID]] <- res
+  }
+  
+  return(resMLE)
+}
+
 
 
