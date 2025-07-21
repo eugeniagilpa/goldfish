@@ -1,3 +1,11 @@
+##################### ###
+#
+# Goldfish package
+# Functions to generate samples of sequences given the panel data.
+# Differences for sampling for competition models or not are cosidered.
+#
+##################### ###
+
 ### Get chain from model functions #------
 
 #' get_chain_from_competition_model

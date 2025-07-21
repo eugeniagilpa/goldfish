@@ -190,6 +190,45 @@ labelTorow <- function(vec,net){
 
 
 
+#' add_na_rowcol
+#' 
+#' @param mat matrix
+#' @param fixed_positions vector of positions where to add NAs
+#' 
+#' @return matrix with NA in the fixed positions (row and column)
+#' @noRd
+#'
+add_na_rowcol <- function(mat, fixed_positions) {
+  if (identical(fixed_positions, FALSE) || length(fixed_positions) == 0) return(mat)
+  
+  n <- nrow(mat)
+  new_n <- n + length(fixed_positions)
+  new_mat <- matrix(NA, nrow = new_n, ncol = new_n)
+  all_idx <- seq_len(new_n)
+  insert_idx <- fixed_positions
+  orig_idx <- setdiff(all_idx, insert_idx)
+  new_mat[orig_idx, orig_idx] <- mat
+  return(new_mat)
+}
+
+
+
+
+#' std_error_fixed_params
+#' 
+#' @param mat matrix
+#' @param fixed_positions vector of positions where to add NAs
+#' 
+#' @return vector of std errors with 0 in the fixed positions 
+#' @noRd
+#'
+std_error_fixed_params <- function(mat, fixed_positions) {
+  d <- sqrt(diag(mat))
+  if (!is.null(fixed_positions) && length(fixed_positions) > 0) {
+    d[fixed_positions] <- 0
+  }
+  d
+}
 
 ## Probability-related utility functions #----
 
