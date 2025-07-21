@@ -113,8 +113,18 @@ get_weights <- function(proposal, loglik, f = function(x) x ,...){
 
 
 
-
-
+#' stratified_resample
+#' 
+#' Stratified resampling method
+#' 
+#' @references Singh, R., Mangat, N.S. (1996). Stratified Sampling. In: Elements of Survey Sampling. Kluwer Texts in the Mathematical Sciences, vol 15. Springer, Dordrecht. https://doi.org/10.1007/978-94-017-1404-4_5
+#' @references J. D. Hol, T. B. Schon and F. Gustafsson, "On Resampling Algorithms for Particle Filters," 2006 IEEE Nonlinear Statistical Signal Processing Workshop, Cambridge, UK, 2006, pp. 79-82, doi: 10.1109/NSSPW.2006.4378824.
+#'
+#' @param cum_weights vector of cumulative weights
+#' 
+#' @return vector with resampled indices
+#' @noRd
+#'
 stratified_resample <- function(cum_weights) {
   N <- length(cum_weights)
   u <- (runif(N) + 0:(N-1)) / N # Stratified uniform samples
@@ -122,6 +132,18 @@ stratified_resample <- function(cum_weights) {
   return(indices)
 }
 
+
+#' residual_resample
+#' 
+#' Residual resampling method
+#'
+#' @references J. D. Hol, T. B. Schon and F. Gustafsson, "On Resampling Algorithms for Particle Filters," 2006 IEEE Nonlinear Statistical Signal Processing Workshop, Cambridge, UK, 2006, pp. 79-82, doi: 10.1109/NSSPW.2006.4378824. 
+#'
+#' @param weights vector of weights
+#' 
+#' @return vector with resampled indices
+#' @noRd
+#'
 residual_resample <- function(weights) {
   N <- length(weights)
   weights <- weights / sum(weights)  # Ensure weights are normalized
@@ -145,12 +167,37 @@ residual_resample <- function(weights) {
 }
 
 
-labelTorow <- function(vec,net1){
+
+
+#' labelTorow
+#' 
+#' Utility function to transform vector of node labels to the rows in the given network
+#'
+#' @param vec vector node labels
+#' @param net adjacency matrix of network of interest
+#' 
+#' @return newVec with row number corresponding to the nodes
+#' @noRd
+#'
+labelTorow <- function(vec,net){
   # vec: vector with labels that we want to transform to row/col number
-  newVec = sapply(1:length(vec), function(i) which(as.integer(colnames(net1)) == vec[i]) )
+  newVec = sapply(1:length(vec), function(i) which(as.integer(colnames(net)) == vec[i]) )
   return(newVec)
 }
 
+
+#' getChoiceProb
+#' 
+#' Utility function to get the choice probability for a given an event
+#' TODO: restructure to be more generic and not crea-del focused
+#'
+#' @param row row of a sequence of events: replace == 0 implies deletion of events
+#' @param creationChoice matrix of creation choice probabilities
+#' @param deletionChoice matrix of deletion choice probabilities
+#' 
+#' @return choice probability of the event
+#' @noRd
+#'
 getChoiceProb <- function(row, creationChoice, deletionChoice) {
   if (row[3] == 0) {
     return(deletionChoice[row[1], row[2]])
@@ -159,10 +206,36 @@ getChoiceProb <- function(row, creationChoice, deletionChoice) {
   }
 }
 
+
+
+#' getWaitingTime
+#' 
+#' Utility function to get a waiting time (exponential distribution)
+#'
+#' @param r random uniform number in [0,1]
+#' @param lambda parameter of the exponential distribution
+#' 
+#' @return waiting time to next event
+#' @noRd
+#'
 getWaitingTime <- function(r, lambda){
   - log(1-r) / lambda 
 }
 
+
+
+#' getWaitingTime
+#' 
+#' Utility function to get the supportConstrain (opportunityList) for a sequence of events
+#' TODO: restructure to be more generic and not crea-del focused
+#'
+#' @param eventsTot data.frame sequence of events
+#' @param net1 matrix initial network
+#' @param label node labels of the network
+#' 
+#' @return list with support constraints for creation and deletion events
+#' @noRd
+#'
 computeSupportConstrain <- function(eventsTot, net1, label){
   
   supportConstrain <- vector(mode = "list", length = nrow(eventsTot))
@@ -187,4 +260,4 @@ computeSupportConstrain <- function(eventsTot, net1, label){
   
 }
 
-#####
+
