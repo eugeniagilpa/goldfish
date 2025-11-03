@@ -306,6 +306,7 @@ computeSupportConstrain <- function(eventsTot, net1, label){
   
 }
 
+#test
 
 #' make_environment_from_list
 #' 
