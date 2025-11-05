@@ -268,7 +268,7 @@ getWaitingTime <- function(r, lambda){
   - log(1-r) / lambda 
 }
 
-
+#test
 
 #' computeSupportConstrain
 #' 
